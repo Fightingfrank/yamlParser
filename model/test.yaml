@@ -1,0 +1,22 @@
+System:
+ - users:
+    type : User
+    name: tom
+    mailbox:
+     quota: 15
+     outgoing:
+      type: User
+      message:
+       from: mary
+       subject: Hello Tom
+       body: Fuzzy parsing is so cool
+ - oldusers:
+    type: User
+    name: mary
+    mailbox:
+     quota: 20
+     outgoing:
+     type: Message
+     message:
+      to: tom
+      subject: Hello Everyone
