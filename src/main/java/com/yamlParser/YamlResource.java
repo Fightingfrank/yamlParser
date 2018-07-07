@@ -30,7 +30,7 @@ public class YamlResource extends ResourceImpl implements Handler{
 	
 	
 	
-	protected Stack<Object> Stack = new Stack<Object>();
+	protected Stack<Object> stack = new Stack<Object>();
 	protected Stack<Object> mapStack = new Stack<Object>();
 	protected HashMap<String, EClass> eClassCache = new HashMap<String, EClass>();
 	protected HashMap<EClass, List<EClass>> allSubtypesCache = new HashMap<EClass, List<EClass>>();
@@ -87,56 +87,45 @@ public class YamlResource extends ResourceImpl implements Handler{
 		EClass eClass = null;
 		if(option.equals(ConstantStringObject.OPTION_LIST_PARSE) || option.equals(ConstantStringObject.OPTIN_MAP_PARSE)){
 			//at the top level
-			
-			
-			
-			
-			
-			
-			if(Stack.isEmpty() || Stack.peek() == null){
-				eClass = eClassForName(element.toString());
-				if(eClass!=null){
-					eObject = eClass.getEPackage().getEFactoryInstance().create(eClass);
-					getContents().add(eObject);
-					// no setAttribute
-//					setAttribute(eObject, element.toString()); 
-				}else{
-					// add warnings
-				}
-				
-			}else{  
-				//this is attribute list
-				Object peekObject = Stack.peek();
-				if(peekObject == null){
-					Stack.push(null);
-					//add warnings
-					return ;
-				}else if(peekObject instanceof EReferenceSlot){
-					EReferenceSlot containmentSlot = (EReferenceSlot)peekObject;
-					eClass = (EClass) eNamedElementForName(element.toString(), getAllSubtypes(containmentSlot.getEReference().getEReferenceType()));
-					if(eClass != null){
-						eObject = eClass.getEPackage().getEFactoryInstance().create(eClass);
-						containmentSlot.newValue(eObject);
-						Stack.push(eObject);
-//						setAttribute(eObject,element.toString());
-						
-					}else{
-						Stack.push(null);
-						//add warnings
-					}
-				}else if (peekObject instanceof EObject){
-					EObject parent = (EObject)peekObject;
-					EAttribute eAttribute = (EAttribute)eNamedElementForName(element.toString(), parent.eClass().getEAllAttributes());
-					if(eAttribute != null){
-//						parent.
-					}
-				}
-				
+			eClass = eClassForName(element.toString());
+			if(eClass != null){
+				eObject = eClass.getEPackage().getEFactoryInstance().create(eClass);
+				getContents().add(eObject);
+				stack.push(eObject);
+			}else{
+				// warnings
 			}
-			Stack.push(eObject);
 		}
-		System.out.println("In startDocument : " + element.toString());
+		// VALUE Element
+		if(option.equals(ConstantStringObject.OPTION_ELEMENT_PARSE)){
+			Object peekObject= (EObject) stack.peek();
+			if(peekObject == null){
+				stack.push(null);
+				return ;
+			}else if ( peekObject instanceof EReferenceSlot){
+				EReferenceSlot containmentSlot = (EReferenceSlot)peekObject;
+				eClass = (EClass)eNamedElementForName(element.toString(), getAllSubtypes(containmentSlot.getEReference().getEReferenceType()));
+				if(eClass != null){
+					eObject = eClass.getEPackage().getEFactoryInstance().create(eClass);
+					containmentSlot.newValue(eObject);
+					
+					//do not need to push value object into stakc
+//					stack.push(eObject);
+				}else{
+					stack.push(null);
+					//add warnings
+				}
+			}else if( peekObject instanceof EObject){
+				EObject e
+				EObject eobject = (EObject)peekObject;
+				EAttribute eAttribute = (EAttribute)eNamedElementForName(element.toString(), eobject.eClass().getEAllAttributes());
+			}
+		}
+			
+			stack.push(eObject);
+			System.out.println("In startDocument : " + element.toString());
 	}
+		
 
 	@Override
 	public void endElement(Object element, String option) {
@@ -145,9 +134,17 @@ public class YamlResource extends ResourceImpl implements Handler{
 
 	@Override
 	public void startValueElement(Object key, Object value, String option) {
-		
-		System.out.println("In startElement ::: /" + key + ": " + value);
-//		System.out.println();
+		EClass eClass = null;
+		EObject eObject = null;
+		EObject parent = (EObject) stack.peek();
+		if(parent == null){
+			//add warnings
+			return ;
+		}else{
+			eClass = eClassForName(key.toString());
+			if(eClass)
+		}
+	
 	}
 	
 	protected EClass eClassForName(String name){
@@ -213,13 +210,13 @@ public class YamlResource extends ResourceImpl implements Handler{
 	}
 	
 	protected int getStackSize(){
-		return Stack.size();
+		return stack.size();
 	}
 	
 	// pop stack content except the first instance
 	protected void clearStack(){
-		for(int i = 0 ; i < Stack.size()-1; i++){
-			Stack.pop();
+		for(int i = 0 ; i < stack.size()-1; i++){
+			stack.pop();
 		}
 	}
 	
