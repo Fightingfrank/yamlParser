@@ -6,6 +6,11 @@ class System {
   val User[*] oldUsers;
 }
 
+class Admin extends User{
+	
+	
+}
+
 class User {
   id attr String name;
   val Mailbox mailbox;

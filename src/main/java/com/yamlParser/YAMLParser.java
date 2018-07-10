@@ -31,6 +31,9 @@ public class YAMLParser {
 		Yaml yaml = new Yaml();
 		Map result = yaml.load(reader);
 		traversalMap(result,handler);
+		
+		//endelement
+//		handler.endDocument(element, option);
 	}
 	
 	
@@ -47,14 +50,15 @@ public class YAMLParser {
 				}
 				listNums--;
 				//it means this list is the firt list(root list)
-				if(listNums == 0){
-					handler.clearStack();
-				}
+//				if(listNums == 0){
+//					handler.clearStack();
+//				}
 				
 			}
 			else if(value instanceof Map){
 				handler.startTagElement(key, ConstantStringObject.OPTIN_MAP_PARSE);
 				traversalMap((Map)value, handler);
+				handler.stackPop();
 			}else{
 				handler.startValueElement(key.toString(), value.toString(), ConstantStringObject.OPTION_ELEMENT_PARSE);
 			}

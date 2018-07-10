@@ -18,7 +18,6 @@ public class UnresolvedReference {
 		this.eObject = eObject;
 		this.eReference = eReference;
 		this.value = value;
-//		this.line = line;
 		this.attributeName = attributeName;
 	}
 
@@ -46,13 +45,6 @@ public class UnresolvedReference {
 		this.value = value;
 	}
 	
-//	public int getLine() {
-//		return line;
-//	}
-//	
-//	public void setLine(int line) {
-//		this.line = line;
-//	}
 	
 	public String getAttributeName() {
 		return attributeName;

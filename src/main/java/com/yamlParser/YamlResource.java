@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Stack;
 
+import org.eclipse.emf.common.util.EList;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
@@ -37,6 +38,7 @@ public class YamlResource extends ResourceImpl implements Handler{
 	
 	protected HashMap<EClass, List<EClass>> allSubtypesCache = new HashMap<EClass, List<EClass>>();
 	protected List<UnresolvedReference> unresolvedReferences = new ArrayList<UnresolvedReference>();
+	protected EObjectIdManager eObjectIdManagerr = new EObjectIdManager();
 	
 	public static void main(String args[]) throws IOException{
 		
@@ -46,6 +48,13 @@ public class YamlResource extends ResourceImpl implements Handler{
 		Resource metamodelResource = metamodelResourceSet.createResource(URI.createFileURI(new File("model/messaging.ecore").getAbsolutePath()));
 		metamodelResource.load(null);
 		EPackage metamodel = (EPackage)metamodelResource.getContents().get(0);
+//		
+//		EList<EReference> elistReference = rootObject.eClass().getEAllContainments();
+//		System.out.println(elistReference.size());
+//		for(EReference reference: elistReference){
+//			Object object = rootObject.eGet(reference);
+//			System.out.println(object);
+//		}
 		
 //		Yaml part
 		ResourceSet modelResourceSet = new ResourceSetImpl();
@@ -56,6 +65,14 @@ public class YamlResource extends ResourceImpl implements Handler{
 		
 		System.out.println(modelResource.getContents().get(0));
 		EObject rootObject = modelResource.getContents().get(0);
+		
+		EList<EReference> elistReference = rootObject.eClass().getEAllContainments();
+		System.out.println(elistReference.size());
+		for(EReference reference: elistReference){
+			Object object = rootObject.eGet(reference);
+			System.out.println(object);
+		}
+		
 	}
 	
 	public YamlResource(URI uri) {
@@ -75,6 +92,11 @@ public class YamlResource extends ResourceImpl implements Handler{
 	}
 	
 	public void doLoadImpl(InputStream inputStream, Map<?,?> options){
+		getContents().clear();
+		unresolvedReferences.clear();
+		stack.clear();
+		eClassCache.clear();
+		eObjectIdManagerr = new EObjectIdManager();
 		new YAMLParser(inputStream,this).doLoad();
 	}
 	
@@ -87,7 +109,6 @@ public class YamlResource extends ResourceImpl implements Handler{
 			eClass = eClassForName(element.toString());
 		
 			if(eClass != null){
-				System.out.println(eClass.getName());
 				eObject = eClass.getEPackage().getEFactoryInstance().create(eClass);
 				if(stack.isEmpty()){  // root element
 					getContents().add(eObject);
@@ -95,9 +116,7 @@ public class YamlResource extends ResourceImpl implements Handler{
 					//size() == 0, create EReferenceSlot
 					Object parent = stack.peek();
 					if(eObject.eClass().getEAllContainments().size() == 0 && !(parent instanceof EReferenceSlot)){
-						System.out.println(eObject.eClass().getName());
 						EReference containment = (EReference) eNamedElementForName(element.toString(),((EObject)parent).eClass().getEAllContainments());
-						System.out.println(containment.getName());
 						EReferenceSlot containmentSlot = new EReferenceSlot(containment,(EObject) parent);
 						stack.push(containmentSlot);
 						return ;
@@ -120,13 +139,24 @@ public class YamlResource extends ResourceImpl implements Handler{
 	// pop stack content except the first instance
 	@Override
 	public void clearStack(){
-		for(int i = 0 ; i < stack.size()-1; i++){
-			stack.pop();
-		}
+//		for(int i = 0 ; i < stack.size()-1; i++){
+//			stack.pop();
+//		}
 	}
 	@Override
-	public void endElement(Object element, String option) {
+	public void endDocument(Object element, String option) {
 		
+	}
+	
+	protected void resolveReferences(){
+		for(UnresolvedReference unresolveReference: unresolvedReferences){
+			
+		}
+	}
+	
+	protected boolean resolveReference(UnresolvedReference unresolvedReference){
+		List<EObject> candidates = eObjectIdManagerr.getEObjectsById(unresolvedReference.getValue());
+		return unresolvedReference.resolve(candidates);
 	}
 
 	@SuppressWarnings("unused")
@@ -143,8 +173,6 @@ public class YamlResource extends ResourceImpl implements Handler{
 		}else if(sf instanceof EReference){
 				//add warnings
 			EReference eReference = (EReference) sf;
-			System.out.println(sf.toString());
-			System.out.println(sf.getName());
 			unresolvedReferences.add(new UnresolvedReference(parent, eReference, key, value));
 		}
 	
@@ -152,7 +180,7 @@ public class YamlResource extends ResourceImpl implements Handler{
 	
 	protected EStructuralFeature findEStructuralFeatureMatch(List<EStructuralFeature> eStructuralFeatures, String name){
 		for(EStructuralFeature sf : eStructuralFeatures){
-			if(sf.getName().equals(name))
+			if(sf.getName().equalsIgnoreCase(name))
 				return sf;
 		}
 		return null;
@@ -161,13 +189,11 @@ public class YamlResource extends ResourceImpl implements Handler{
 	@SuppressWarnings("unchecked")
 	protected void setEAttributeValue(EObject eObject, EAttribute eAttribute, String attributeName, String value){
 		Object eValue = getEValue(eAttribute, attributeName, value);
-		System.out.println(eAttribute.getName() + " ,  type: " + eAttribute.getEType().toString());
 		if(eValue == null)
 			return;
 		if(eAttribute.isMany()){
 			((List<Object>) eObject.eGet(eAttribute)).add(eValue);
 		}else{
-			System.out.println(eValue.toString());
 			eObject.eSet(eAttribute, eValue);
 		}
 	}
@@ -196,7 +222,7 @@ public class YamlResource extends ResourceImpl implements Handler{
 	
 	protected EClass eClassForName(String name, EClass parentClass){
 		for(EStructuralFeature sf: parentClass.getEAllStructuralFeatures()){
-				if(sf.getName().equals(name)){
+				if(sf.getName().equalsIgnoreCase(name)){
 					return (EClass) sf.getEType();
 				}
 			
@@ -273,9 +299,6 @@ public class YamlResource extends ResourceImpl implements Handler{
 	protected void setContainmentObject(EObject eObject, String name){
 		//setAttribute中的EObject参数就是现在的parent,现在的eObject是根据那个name和value确定的
 		EObject parent = (EObject)stack.peek();
-//		if()
-		System.out.println(parent.toString());
-		System.out.println(eObject.eClass());
 		
 		if(parent instanceof EReferenceSlot){
 			
@@ -283,13 +306,19 @@ public class YamlResource extends ResourceImpl implements Handler{
 			EReference containment = (EReference)findEStructuralFeatureMatch(getCandidateStructuralFeaturesForAttribute(parent.eClass()), name);
 			if(containment != null){
 				if(containment.isMany()){
-					System.out.println("Contaiment class:" + containment.getEType().toString());
 					((List<EObject>) parent.eGet(containment)).add(eObject);
 				}else{
 					parent.eSet(containment, eObject);
 				}
 			}
 		}		
-		
 	}	
+	
+	@Override
+	public void stackPop(){
+		if(!stack.isEmpty()){
+			Object object = stack.peek();
+			stack.pop();
+		}
+	}
 }
